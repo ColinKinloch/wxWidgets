@@ -39,6 +39,8 @@ public:
     virtual void EndModal( int retCode ) override;
     virtual bool IsModal() const override;
 
+    GtkNativeDialog *m_nativedialog;
+
 private:
     // common part of all ctors
     void Init();

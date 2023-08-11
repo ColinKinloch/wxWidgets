@@ -31,6 +31,7 @@ wxDEFINE_TIED_SCOPED_PTR_TYPE(wxGUIEventLoop)
 
 void wxDialog::Init()
 {
+    m_nativedialog = nullptr;
     m_modalLoop = nullptr;
     m_modalShowing = false;
 }
@@ -63,6 +64,14 @@ bool wxDialog::Show( bool show )
     if (!show && IsModal())
     {
         EndModal( wxID_CANCEL );
+    }
+
+    if (GTK_IS_NATIVE_DIALOG(m_nativedialog)) {
+      if (show)
+          gtk_native_dialog_show(m_nativedialog);
+      else
+          gtk_native_dialog_hide(m_nativedialog);
+      return true;
     }
 
     if (show && CanDoLayoutAdaptation())
@@ -140,8 +149,12 @@ int wxDialog::ShowModal()
     wxWindow * const parent = GetParentForModalDialog();
     if ( parent )
     {
-        gtk_window_set_transient_for( GTK_WINDOW(m_widget),
-                                      GTK_WINDOW(parent->m_widget) );
+        if (m_nativedialog)
+            gtk_native_dialog_set_transient_for(GTK_NATIVE_DIALOG(m_nativedialog),
+                                                GTK_WINDOW(parent->m_widget));
+        else
+            gtk_window_set_transient_for( GTK_WINDOW(m_widget),
+                                          GTK_WINDOW(parent->m_widget) );
     }
 
 #if GTK_CHECK_VERSION(2,10,0)
@@ -156,7 +169,10 @@ int wxDialog::ShowModal()
 #endif
 
     // NOTE: this will cause a gtk_grab_add() during Show()
-    gtk_window_set_modal(GTK_WINDOW(m_widget), true);
+    if (m_nativedialog)
+        gtk_native_dialog_set_modal(GTK_NATIVE_DIALOG(m_nativedialog), true);
+    else
+        gtk_window_set_modal(GTK_WINDOW(m_widget), true);
 
     m_modalShowing = true;
 
@@ -167,8 +183,11 @@ int wxDialog::ShowModal()
     // Prevent the widget from being destroyed if the user closes the window.
     // Needed for derived classes which bypass wxTLW::Create(), and therefore
     // the wxTLW "delete-event" handler is not connected
-    gulong handler_id = g_signal_connect(
-        m_widget, "delete-event", G_CALLBACK(gtk_true), this);
+
+    gulong handler_id;
+    if (!m_nativedialog)
+        handler_id = g_signal_connect(
+            m_widget, "delete-event", G_CALLBACK(gtk_true), this);
 
     // Run modal dialog event loop.
     {
@@ -176,13 +195,17 @@ int wxDialog::ShowModal()
         m_modalLoop->Run();
     }
 
-    g_signal_handler_disconnect(m_widget, handler_id);
+    if (!m_nativedialog)
+        g_signal_handler_disconnect(m_widget, handler_id);
 #if GTK_CHECK_VERSION(2,10,0)
     if (sigId)
         g_signal_remove_emission_hook(sigId, hookId);
 #endif
 
-    gtk_window_set_modal(GTK_WINDOW(m_widget), FALSE);
+    if (m_nativedialog)
+        gtk_native_dialog_set_modal(GTK_NATIVE_DIALOG(m_nativedialog), false);
+    else
+        gtk_window_set_modal(GTK_WINDOW(m_widget), false);
 
     return GetReturnCode();
 }

@@ -2983,6 +2983,7 @@ typedef struct _GdkAtom* GdkAtom;
 
 /* Stand-ins for GTK types */
 typedef struct _GtkWidget         GtkWidget;
+typedef struct _GtkNativeDialog   GtkNativeDialog;
 typedef struct _GtkRcStyle        GtkRcStyle;
 typedef struct _GtkAdjustment     GtkAdjustment;
 typedef struct _GtkToolbar        GtkToolbar;

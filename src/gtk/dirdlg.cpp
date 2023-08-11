@@ -88,42 +88,37 @@ bool wxDirDialog::Create(wxWindow* parent,
     if (parent)
         gtk_parent = GTK_WINDOW( gtk_widget_get_toplevel(parent->m_widget) );
 
-    m_widget = gtk_file_chooser_dialog_new(
+    m_nativedialog = GTK_NATIVE_DIALOG(gtk_file_chooser_native_new(
                    m_message.utf8_str(),
                    gtk_parent,
                    GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
 #ifdef __WXGTK4__
-                   static_cast<const char*>(wxConvertMnemonicsToGTK(wxGetStockLabel(wxID_CANCEL)).utf8_str()),
-#else
-                   "gtk-cancel",
-#endif
-                   GTK_RESPONSE_CANCEL,
-#ifdef __WXGTK4__
                    static_cast<const char*>(wxConvertMnemonicsToGTK(wxGetStockLabel(wxID_OPEN)).utf8_str()),
+                   static_cast<const char*>(wxConvertMnemonicsToGTK(wxGetStockLabel(wxID_CANCEL)).utf8_str())
 #else
-                   "gtk-open",
+                   "_Open",
+                   "_Cancel"
 #endif
-                   GTK_RESPONSE_ACCEPT,
-                   nullptr);
+));
 
-    g_object_ref(m_widget);
+    g_object_ref(m_nativedialog);
 
-    gtk_dialog_set_default_response(GTK_DIALOG(m_widget), GTK_RESPONSE_ACCEPT);
+    //gtk_dialog_set_default_response(m_nativedialog, GTK_RESPONSE_ACCEPT);
 #if GTK_CHECK_VERSION(2,18,0)
     if (wx_is_at_least_gtk2(18))
     {
         gtk_file_chooser_set_create_folders(
-            GTK_FILE_CHOOSER(m_widget), !HasFlag(wxDD_DIR_MUST_EXIST) );
+            GTK_FILE_CHOOSER(m_nativedialog), !HasFlag(wxDD_DIR_MUST_EXIST) );
     }
 #endif
 
     // Enable multiple selection if desired
     gtk_file_chooser_set_select_multiple(
-        GTK_FILE_CHOOSER(m_widget), HasFlag(wxDD_MULTIPLE) );
+        GTK_FILE_CHOOSER(m_nativedialog), HasFlag(wxDD_MULTIPLE) );
 
     // Enable show hidden folders if desired
     gtk_file_chooser_set_show_hidden(
-        GTK_FILE_CHOOSER(m_widget), HasFlag(wxDD_SHOW_HIDDEN) );
+        GTK_FILE_CHOOSER(m_nativedialog), HasFlag(wxDD_SHOW_HIDDEN) );
 
     // local-only property could be set to false to allow non-local files to be loaded.
     // In that case get/set_uri(s) should be used instead of get/set_filename(s) everywhere
@@ -132,7 +127,7 @@ bool wxDirDialog::Create(wxWindow* parent,
     // Currently local-only is kept as the default - true:
     // gtk_file_chooser_set_local_only(GTK_FILE_CHOOSER(m_widget), true);
 
-    g_signal_connect (m_widget, "response",
+    g_signal_connect (m_nativedialog, "response",
         G_CALLBACK (gtk_dirdialog_response_callback), this);
 
     if ( !defaultPath.empty() )
@@ -143,7 +138,7 @@ bool wxDirDialog::Create(wxWindow* parent,
 
 void wxDirDialog::GTKOnAccept()
 {
-    GSList *fnamesi = gtk_file_chooser_get_filenames(GTK_FILE_CHOOSER(m_widget));
+    GSList *fnamesi = gtk_file_chooser_get_filenames(GTK_FILE_CHOOSER(m_nativedialog));
     GSList *fnames = fnamesi;
 
     while ( fnamesi )
@@ -188,7 +183,7 @@ void wxDirDialog::SetPath(const wxString& dir)
 {
     if (wxDirExists(dir))
     {
-        gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(m_widget),
+        gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(m_nativedialog),
                                             wxGTK_CONV_FN(dir));
     }
 }
